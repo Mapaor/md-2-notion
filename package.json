@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@notionhq/client": "^4.0.2",
+    "@tailwindcss/typography": "^0.5.16",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.22",
     "next": "15.5.2",

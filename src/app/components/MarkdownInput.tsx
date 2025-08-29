@@ -23,6 +23,15 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
 
   // Create a safe ReactMarkdown component that handles plugin errors
   const SafeMarkdownPreview = ({ content }: { content: string }) => {
+    // Don't render anything if content is empty
+    if (!content.trim()) {
+      return (
+        <div className="text-gray-400 text-sm italic">
+          Escriu algun text en markdown per veure la previsualització...
+        </div>
+      );
+    }
+
     // First try with all plugins - now with compatible versions
     try {
       return (
@@ -40,13 +49,18 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
       // Fallback: try without math plugins (common source of errors)
       try {
         return (
-          <ReactMarkdown 
-            remarkPlugins={[remarkGfm]}
-            // @ts-expect-error - Known type issue with plugin compatibility
-            rehypePlugins={[rehypeHighlight]}
-          >
-            {content}
-          </ReactMarkdown>
+          <div>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              // @ts-expect-error - Known type issue with plugin compatibility
+              rehypePlugins={[rehypeHighlight]}
+            >
+              {content}
+            </ReactMarkdown>
+            <p className="text-xs text-amber-600 mt-2 p-2 bg-amber-50 rounded">
+              <em>⚠️ Equations unavailable due to plugin compatibility - syntax highlighting enabled</em>
+            </p>
+          </div>
         );
       } catch (error2) {
         console.warn('Highlight plugin failed, using basic rendering:', error2);
@@ -57,8 +71,8 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {content}
             </ReactMarkdown>
-            <p className="text-xs text-gray-500 mt-2">
-              <em>Note: Math equations and syntax highlighting unavailable due to plugin compatibility issues</em>
+            <p className="text-xs text-amber-600 mt-2 p-2 bg-amber-50 rounded">
+              <em>⚠️ Advanced features unavailable - basic markdown rendering only</em>
             </p>
           </div>
         );
@@ -179,8 +193,10 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
 
       {/* Preview renderitzat */}
       <h2 className="text-lg font-semibold">Previsualització</h2>
-      <div className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm prose prose-sm max-w-none h-64 overflow-y-auto">
-        <SafeMarkdownPreview content={text} />
+      <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm h-64 overflow-y-auto">
+        <div className="markdown-preview">
+          <SafeMarkdownPreview content={text} />
+        </div>
       </div>
 
       {/* JSON de Notion */}
