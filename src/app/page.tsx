@@ -1,103 +1,188 @@
-import Image from "next/image";
+'use client';
+import { useState, useCallback } from 'react';
+import importarMarkdown from './lib/utils/importarMarkdown';
+import Head from 'next/head';
+import MarkdownInput from './components/MarkdownInput';
+import type { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
+
+
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [pageId, setPageId] = useState('');
+  const [notionToken, setNotionToken] = useState('');
+  const [data, setData] = useState<BlockObjectResponse[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [msgOutput, setOutput] = useState<string | null>(null);
+  const [currentMarkdown, setCurrentMarkdown] = useState('');
+  const [currentNotionJson, setCurrentNotionJson] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleMarkdownChange = useCallback((markdown: string, notionJson: string) => {
+    setCurrentMarkdown(markdown);
+    setCurrentNotionJson(notionJson);
+  }, []);
+
+  const importarMarkdownHandler = async () => {
+    if (!currentNotionJson.trim()) {
+      setError('No hi ha contingut Markdown per importar');
+      return;
+    }
+
+    try {
+      setError(null);
+      setData(null);
+      setOutput(null);
+      const result = await importarMarkdown(pageId, notionToken, currentNotionJson, setError);
+      setData(result);
+      setOutput('Markdown importat correctament a Notion!');
+    } catch (err: unknown) {
+      let errorMsg = 'Error desconegut';
+      if (err instanceof Error) errorMsg = err.message;
+      console.error('Error inesperat:', errorMsg);
+      setError(errorMsg);
+    }
+  };
+
+  return (
+    <div className="max-w-xl mx-auto p-8 font-sans text-gray-800">
+      <Head>
+        <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+        />
+      </Head>
+      <h1 className="text-3xl font-bold text-center text-green-600 mb-2">Importar Markdown a una pàgina de Notion</h1>
+      <h3 className="mt-6 text-lg text-gray-600 font-semibold">NOTION_TOKEN</h3>
+      <input
+        className="w-full p-3 mt-2 border border-gray-300 rounded-md text-base"
+        type="text"
+        placeholder="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"
+        value={notionToken}
+        onChange={(e) => setNotionToken(e.target.value)}
+      />
+      <h3 className="mt-6 text-lg text-gray-600 font-semibold">Page ID</h3>
+      <input
+        className="w-full p-3 mt-2 border border-gray-300 rounded-md text-base"
+        type="text"
+        placeholder="25e72e8225e1807db1cbd8c2e44f6a30"
+        value={pageId}
+        onChange={(e) => setPageId(e.target.value)}
+      />
+      <h3 className="mt-6 text-lg text-gray-600 font-semibold">Introdueix l&apos;input</h3>
+      <MarkdownInput 
+        onMarkdownChange={handleMarkdownChange}
+        initialValue={`# Exemples de Markdown
+
+## Text amb estils
+
+Aquest és un **text en negreta** i aquest és *text en cursiva*.
+
+## Llistes
+
+1. Element 1
+2. Element 2
+3. Element 3
+
+- Element A
+- Element B
+- Element C
+
+### Codi
+
+\`\`\`javascript
+console.log('Hola, món!');
+\`\`\`
+
+### Cita
+
+> Aquesta és una cita.
+
+### Equacions
+
+La famosa identitat d'Euler $e^{i\pi}+1=0$ és en realitat un cas particular de l'equació d'Euler per \(x=\pi\)
+
+$$
+e^{i\pi }=\cos \pi +i\operatorname {sen} \pi
+$$
+
+### Enllaç
+
+[Enllaç a GitHub](https://github.com)`}
+      ></MarkdownInput>
+      <h3 className="mt-6 text-lg text-gray-600 font-semibold">Executa l&apos;acció</h3>
+      {/* {currentMarkdown && (
+        <div className="mt-2 p-2 bg-gray-50 border rounded text-sm">
+          <strong>Markdown detectat:</strong> {currentMarkdown.length} caràcters
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
+      )} */}
+      <button 
+        className={`mt-6 text-white py-3 px-5 rounded-lg font-medium shadow w-full transition ${
+          !currentNotionJson.trim() || !pageId || !notionToken 
+            ? 'bg-gray-400 cursor-not-allowed' 
+            : 'bg-green-600 hover:bg-green-500'
+        }`}
+        onClick={importarMarkdownHandler}
+        disabled={!currentNotionJson.trim() || !pageId || !notionToken}
+      >
+        Importar Markdown
+      </button>
+      <h3 className="mt-6 text-lg text-gray-600 font-semibold">Output</h3>
+      <div className="mt-2">
+      {error && (
+        <>
+          <p className="mt-10 font-bold text-gray-800">Error</p>
+          <pre className="text-red-600 mt-2 whitespace-pre-wrap">{error}</pre>
+        </>
+      )}
+      {msgOutput && (
+        <>
+          <p className="mt-10 font-bold text-gray-800">Missatge Output</p>
+          <pre className="mt-2 bg-green-100 p-3 rounded text-sm font-mono whitespace-pre-wrap text-green-800">{msgOutput}</pre>
+        </>
+      )}
+      {data && (
+        <>
+          <p className="mt-6 font-bold text-gray-800">Blocs afegits ({data.length})</p>
+          <pre className="mt-2 bg-gray-100 p-3 rounded text-xs font-mono whitespace-pre-wrap max-h-64 overflow-y-auto">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </>
+      )}
+
+      </div>
+      <hr className="my-8 border-t border-gray-200" />
+      <h1 className="text-2xl font-bold text-center text-green-600 mt-10">Exemple</h1>
+      <h3 className="mt-6 text-lg text-gray-600 font-semibold">Pàgina de Notion d&apos;exemple</h3>
+      <a
+        href="https://silky-gastonia-a58.notion.site/Importar-Markdown-25e72e8225e1807db1cbd8c2e44f6a30?source=copy_link"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center bg-blue-600 rounded-lg px-4 py-3 my-4 shadow text-white font-medium hover:bg-blue-400 transition"
+      >
+        Importar Markdown a Notion
+      </a>
+      <p className="text-gray-400">
+        Utilitza el NOTION_TOKEN i el Page ID que apareixen als placeholders, o entra a {' '}
         <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          href="./botoImportarMarkdown"
           target="_blank"
           rel="noopener noreferrer"
+          className="underline text-gray-400 hover:text-gray-600"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
+          aquí
+        </a> per fer servir la pàgina d&apos;exemple
+        .
+      </p>
+      <div className="flex justify-center mt-12">
         <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          href="https://github.com/Mapaor/md-2-notion"
           target="_blank"
           rel="noopener noreferrer"
+          title="Veure el repositori de GitHub"
+          className="text-gray-700 text-4xl hover:text-green-600 transition"
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
+          <i className="fab fa-github"></i>
         </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
 }
