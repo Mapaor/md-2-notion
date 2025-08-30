@@ -174,6 +174,7 @@ function extractTextFromNode(node: ASTNode): string {
 // Block creation functions
 function createParagraphBlock(richText: NotionRichText[]): NotionBlock {
   return {
+    object: 'block',
     type: 'paragraph',
     paragraph: {
       rich_text: richText,
@@ -185,6 +186,7 @@ function createParagraphBlock(richText: NotionRichText[]): NotionBlock {
 function createHeadingBlock(level: number, richText: NotionRichText[]): NotionBlock {
   const headingType = level === 1 ? 'heading_1' : level === 2 ? 'heading_2' : 'heading_3';
   return {
+    object: 'block',
     type: headingType,
     [headingType]: {
       rich_text: richText,
@@ -212,6 +214,7 @@ function createCodeBlock(content: string, language?: string): NotionBlock {
   const notionLanguage = language ? (languageMap[language] || language) : 'plain text';
 
   return {
+    object: 'block',
     type: 'code',
     code: {
       caption: [],
@@ -223,6 +226,7 @@ function createCodeBlock(content: string, language?: string): NotionBlock {
 
 function createBulletedListItem(richText: NotionRichText[]): NotionBlock {
   return {
+    object: 'block',
     type: 'bulleted_list_item',
     bulleted_list_item: {
       rich_text: richText,
@@ -233,6 +237,7 @@ function createBulletedListItem(richText: NotionRichText[]): NotionBlock {
 
 function createNumberedListItem(richText: NotionRichText[]): NotionBlock {
   return {
+    object: 'block',
     type: 'numbered_list_item',
     numbered_list_item: {
       rich_text: richText,
@@ -243,6 +248,7 @@ function createNumberedListItem(richText: NotionRichText[]): NotionBlock {
 
 function createQuoteBlock(richText: NotionRichText[]): NotionBlock {
   return {
+    object: 'block',
     type: 'quote',
     quote: {
       rich_text: richText,
@@ -253,6 +259,7 @@ function createQuoteBlock(richText: NotionRichText[]): NotionBlock {
 
 function createDividerBlock(): NotionBlock {
   return {
+    object: 'block',
     type: 'divider',
     divider: {}
   };
@@ -260,6 +267,7 @@ function createDividerBlock(): NotionBlock {
 
 function createEquationBlock(expression: string): NotionBlock {
   return {
+    object: 'block',
     type: 'equation',
     equation: {
       expression
@@ -269,6 +277,7 @@ function createEquationBlock(expression: string): NotionBlock {
 
 function createToDoItem(richText: NotionRichText[], checked: boolean = false): NotionBlock {
   return {
+    object: 'block',
     type: 'to_do',
     to_do: {
       rich_text: richText,
@@ -278,23 +287,22 @@ function createToDoItem(richText: NotionRichText[], checked: boolean = false): N
   };
 }
 
-function createTableBlock(rows: NotionRichText[][][], hasColumnHeader: boolean = false): NotionBlock[] {
-  if (rows.length === 0) return [];
+function createTableBlock(rows: NotionRichText[][][], hasColumnHeader: boolean = false): NotionBlock {
+  if (rows.length === 0) {
+    return {
+      type: 'paragraph',
+      paragraph: {
+        rich_text: [createRichText('Taula buida')],
+        color: 'default'
+      }
+    };
+  }
 
   const tableWidth = Math.max(...rows.map(row => row.length));
-  const blocks: NotionBlock[] = [];
-
-  // Create table block
-  blocks.push({
-    type: 'table',
-    table: {
-      table_width: tableWidth,
-      has_column_header: hasColumnHeader,
-      has_row_header: false
-    }
-  });
-
-  // Create table rows
+  
+  // Create table rows as children
+  const tableRows: NotionBlock[] = [];
+  
   for (const row of rows) {
     // Pad row to table width
     const paddedRow = [...row];
@@ -302,7 +310,8 @@ function createTableBlock(rows: NotionRichText[][][], hasColumnHeader: boolean =
       paddedRow.push([createRichText('')]);
     }
 
-    blocks.push({
+    tableRows.push({
+      object: 'block',
       type: 'table_row',
       table_row: {
         cells: paddedRow
@@ -310,11 +319,22 @@ function createTableBlock(rows: NotionRichText[][][], hasColumnHeader: boolean =
     });
   }
 
-  return blocks;
+  // Return table block with children inside table property
+  return {
+    object: 'block',
+    type: 'table',
+    table: {
+      table_width: tableWidth,
+      has_column_header: hasColumnHeader,
+      has_row_header: false,
+      children: tableRows
+    }
+  };
 }
 
 function createImageBlock(url: string, caption?: string): NotionBlock {
   const imageBlock: NotionBlock = {
+    object: 'block',
     type: 'image',
     image: {
       type: 'external',
@@ -420,7 +440,11 @@ function nodeToNotionBlocks(node: ASTNode, equations: { [key: string]: string } 
         const rows: NotionRichText[][][] = [];
         let hasColumnHeader = false;
 
-        node.children.forEach((row: ASTNode, index: number) => {
+        // En Markdown GFM, les taules sempre tenen header a la primera fila
+        // El parser ja separa els headers de les files de dades
+        let rowIndex = 0;
+        
+        node.children.forEach((row: ASTNode) => {
           if (row.type === 'tableRow') {
             const cells: NotionRichText[][] = [];
             
@@ -433,17 +457,17 @@ function nodeToNotionBlocks(node: ASTNode, equations: { [key: string]: string } 
             }
             
             rows.push(cells);
-
-            // First row in a table is typically a header
-            if (index === 0 && cells.some(cell => 
-              cell.some(rt => rt.annotations.bold)
-            )) {
+            
+            // En GFM, la primera fila sempre és header si hi ha més d'una fila
+            if (rowIndex === 0 && node.children && node.children.length > 1) {
               hasColumnHeader = true;
             }
+            
+            rowIndex++;
           }
         });
 
-        blocks.push(...createTableBlock(rows, hasColumnHeader));
+        blocks.push(createTableBlock(rows, hasColumnHeader));
       }
       break;
     
