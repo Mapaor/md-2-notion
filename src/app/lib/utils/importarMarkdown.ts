@@ -39,7 +39,7 @@ async function importarMarkdown(blockId: string, notionToken: string, markdownJS
     } catch (err: unknown) {
         let errorMsg = 'Error desconegut';
         if (err instanceof Error) errorMsg = err.message;
-        console.error('Error al fetchData:', errorMsg);
+        console.error('Error al importar:', errorMsg);
         if (setError) setError(errorMsg);
         throw err;
     }

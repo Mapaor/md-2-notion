@@ -5,6 +5,8 @@ import { markdownToAST } from './lib/utils/Markdown2AST';
 import Head from 'next/head';
 import MarkdownInput from './components/markdown-input/MarkdownInput';
 import type { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGithub } from "@fortawesome/free-brands-svg-icons";
 
 
 
@@ -348,17 +350,17 @@ $$
         </a> per fer servir la pàgina d&apos;exemple
         .
       </p>
-      <div className="flex justify-center mt-12">
-        <a
-          href="https://github.com/Mapaor/md-2-notion"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Veure el repositori de GitHub"
-          className="text-gray-700 text-4xl hover:text-green-600 transition"
-        >
-          <i className="fab fa-github"></i>
-        </a>
-      </div>
+      <div className="flex justify-center mt-3">
+      <a
+        href="https://github.com/Mapaor/md-2-notion"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Veure el repositori de GitHub"
+        className="text-gray-800 text-3xl transition duration-200 transform hover:text-blue-600 hover:scale-110"
+      >
+        <FontAwesomeIcon icon={faGithub} />
+      </a>
+    </div>
     </div>
   );
 }

@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fortawesome/free-brands-svg-icons": "^7.0.0",
+    "@fortawesome/react-fontawesome": "^3.0.1",
     "@notionhq/client": "^4.0.2",
     "@tailwindcss/typography": "^0.5.16",
     "highlight.js": "^11.11.1",
