@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import importarMarkdown from './lib/utils/importarMarkdown';
 import { markdownToAST } from './lib/utils/Markdown2AST';
 import Head from 'next/head';
-import MarkdownInput from './components/MarkdownInput';
+import MarkdownInput from './components/markdown-input/MarkdownInput';
 import type { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 
 
@@ -197,7 +197,7 @@ $$
       )} */}
       
       {/* Botó de Verificar Markdown */}
-      <button 
+      {/* <button 
         className={`mt-6 text-white py-3 px-5 rounded-lg font-medium shadow w-full transition flex items-center justify-center ${
           !currentMarkdown.trim() || isVerifying
             ? 'bg-gray-400 cursor-not-allowed' 
@@ -217,10 +217,10 @@ $$
         ) : (
           '🔍 Verificar Markdown'
         )}
-      </button>
+      </button> */}
 
       {/* Resultats de la verificació */}
-      {verificationResult && (
+      {/* {verificationResult && (
         <div className={`mt-4 p-4 rounded-lg border ${
           verificationResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
         }`}>
@@ -277,7 +277,7 @@ $$
             </div>
           )}
         </div>
-      )}
+      )} */}
 
       {/* Botó d'Importar Markdown */}
       <button 
@@ -298,7 +298,7 @@ $$
             Important...
           </>
         ) : (
-          '📤 Importar Markdown'
+          'Importar Markdown'
         )}
       </button>
       <h3 className="mt-6 text-lg text-gray-600 font-semibold">Output</h3>
