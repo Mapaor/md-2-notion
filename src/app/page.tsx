@@ -155,7 +155,7 @@ Aquest és un **text en negreta** i aquest és *text en cursiva*.
 
 ### Codi
 
-Podem tenir blocs de codi en javascript, python i molts més llenguatges.
+Podem tenir blocs de \`codi\` en javascript, python i molts més llenguatges.
 
 \`\`\`javascript
 console.log('Hola, món!');
@@ -164,6 +164,13 @@ console.log('Hola, món!');
 ### Cita
 
 > Aquesta és una cita.
+
+### Taula
+
+| First Header  | Second Header |
+| ------------- | ------------- |
+| Content Cell  | Content Cell  |
+| Content Cell  | Content Cell  |
 
 ### Equacions
 
