@@ -46,10 +46,9 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
     } catch (error) {
       console.warn('Plugin rendering failed:', error);
       
-      // Simple fallback without math
+      // Simple fallback without math and highlighting
       return (
-        // @ts-expect-error - Version compatibility issues
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {content}
         </ReactMarkdown>
       );

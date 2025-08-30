@@ -19,7 +19,7 @@ body {
   font-weight: 600;
   padding-bottom: 0.3em;
   border-bottom: 1px solid #d1d9e0;
-  margin-bottom: 16px;
+  margin-bottom: 0.25em;
   margin-top: 24px;
 }
 
@@ -28,31 +28,33 @@ body {
   font-weight: 600;
   padding-bottom: 0.3em;
   border-bottom: 1px solid #d1d9e0;
-  margin-bottom: 16px;
+  margin-bottom: 0.25em;
   margin-top: 24px;
 }
 
 .markdown-preview h3 {
   font-size: 1.25em;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 0.25em;
   margin-top: 24px;
 }
 
 .markdown-preview h4, .markdown-preview h5, .markdown-preview h6 {
   font-size: 1em;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 0.25em;
   margin-top: 24px;
 }
 
 .markdown-preview p {
-  margin-bottom: 16px;
+  margin-bottom: 0.25em;
 }
 
+/* Estandarditzar indentació per totes les llistes */
 .markdown-preview ul, .markdown-preview ol {
-  margin-bottom: 16px;
-  padding-left: 2em;
+  margin-bottom: 1em;
+  padding-left: 1.5rem; /* Indentació consistent per totes les llistes */
+  margin-left: 0;
 }
 
 .markdown-preview ul {
@@ -65,6 +67,7 @@ body {
 
 .markdown-preview li {
   margin-bottom: 0.25em;
+  padding-left: 0; /* Reset padding dels li elements */
 }
 
 .markdown-preview blockquote {
@@ -143,7 +146,7 @@ body {
   font-style: italic;
 }
 
-/* Task list styling - Enhanced GitHub-like approach */
+/* Task list styling - Amb indentació consistent */
 .markdown-preview input[type="checkbox"] {
   margin-right: 0.5rem;
   accent-color: #0969da;
@@ -151,13 +154,27 @@ body {
   vertical-align: baseline;
 }
 
-/* Target task list items specifically - hide all list styling */
+/* Target task list items specifically - hide all list styling and adjust positioning */
 .markdown-preview li:has(input[type="checkbox"]) {
   list-style: none !important;
   list-style-type: none !important;
-  margin-left: -1.5rem;
-  padding-left: 1.5rem;
+  margin-left: -0.8rem; /* Compensate for container padding */
+  margin-bottom: 0.25em; /* Same vertical spacing as regular list items */
+  padding-left: 0; /* No padding - checkboxes should align with bullets/numbers */
   position: relative;
+}
+
+/* Simulate ul container margins for task lists */
+/* First task list item - add top margin like ul container would */
+.markdown-preview li:has(input[type="checkbox"]):first-child,
+.markdown-preview :not(li:has(input[type="checkbox"])) + li:has(input[type="checkbox"]) {
+  margin-top: 1em !important; /* Simulate ul container top spacing */
+}
+
+/* Last task list item - add bottom margin like ul container would */
+.markdown-preview li:has(input[type="checkbox"]):last-child,
+.markdown-preview li:has(input[type="checkbox"]):not(:has(+ li:has(input[type="checkbox"]))) {
+  margin-bottom: 1em !important; /* Simulate ul container bottom margin */
 }
 
 /* Additional specificity to override all list styling on task items */
@@ -165,6 +182,7 @@ body {
 .markdown-preview ol li:has(input[type="checkbox"]) {
   list-style: none !important;
   list-style-type: none !important;
+  margin-bottom: 0.25em !important; /* Ensure consistent vertical spacing */
 }
 
 /* Remove any potential bullet pseudo-elements */
@@ -172,11 +190,4 @@ body {
 .markdown-preview li:has(input[type="checkbox"])::marker {
   display: none !important;
   content: none !important;
-}
-
-/* Ensure task list containers don't add extra spacing */
-.markdown-preview ul:has(li input[type="checkbox"]),
-.markdown-preview ol:has(li input[type="checkbox"]) {
-  padding-left: 0;
-  margin-left: 0;
 }

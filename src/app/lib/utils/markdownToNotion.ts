@@ -12,6 +12,7 @@ interface ASTNode {
   checked?: boolean | null;
   lang?: string;
   url?: string;
+  alt?: string;
   [key: string]: unknown;
 }
 
@@ -89,11 +90,33 @@ function createEquationRichText(expression: string): NotionRichText {
 }
 
 // Process inline markdown formatting (bold, italic, code, etc.)
-function processInlineFormatting(node: ASTNode): NotionRichText[] {
+function processInlineFormatting(node: ASTNode, equations: { [key: string]: string } = {}): NotionRichText[] {
   const richTexts: NotionRichText[] = [];
 
   if (node.type === 'text') {
-    return [createRichText(node.value || '')];
+    const text = node.value || '';
+    
+    // Check if text contains equation placeholders
+    const parts = text.split(/((?:INLINE|BLOCK)_EQUATION_\d+_PLACEHOLDER)/);
+    
+    for (const part of parts) {
+      if (part.match(/^INLINE_EQUATION_\d+_PLACEHOLDER$/)) {
+        // Inline equation
+        const equation = equations[part];
+        if (equation) {
+          console.log(`Converting inline placeholder ${part} to equation: ${equation}`);
+          richTexts.push(createEquationRichText(equation));
+        } else {
+          console.log(`No equation found for placeholder: ${part}`);
+          richTexts.push(createRichText(part));
+        }
+      } else if (part) {
+        // Regular text
+        richTexts.push(createRichText(part));
+      }
+    }
+    
+    return richTexts.length > 0 ? richTexts : [createRichText(text)];
   }
 
   if (node.type === 'strong') {
@@ -120,6 +143,14 @@ function processInlineFormatting(node: ASTNode): NotionRichText[] {
     return [createRichText(content, {}, node.url as string)];
   }
 
+  // Handle images - convert to standalone image blocks
+  if (node.type === 'image') {
+    console.log('Processing inline image node:', node.url, node.alt);
+    // Images should be handled as separate blocks, not inline
+    // Return empty array here, images will be handled at paragraph level
+    return [];
+  }
+
   // Handle inline math equations
   if (node.type === 'inlineMath') {
     return [createEquationRichText(node.value || '')];
@@ -128,7 +159,7 @@ function processInlineFormatting(node: ASTNode): NotionRichText[] {
   // Process children for complex inline elements
   if (node.children) {
     for (const child of node.children) {
-      richTexts.push(...processInlineFormatting(child));
+      richTexts.push(...processInlineFormatting(child, equations));
     }
   }
 
@@ -136,12 +167,12 @@ function processInlineFormatting(node: ASTNode): NotionRichText[] {
 }
 
 // Convert paragraph content to rich text array
-function paragraphToRichText(node: ASTNode): NotionRichText[] {
+function paragraphToRichText(node: ASTNode, equations: { [key: string]: string } = {}): NotionRichText[] {
   const richTexts: NotionRichText[] = [];
   
   if (node.children) {
     for (const child of node.children) {
-      richTexts.push(...processInlineFormatting(child));
+      richTexts.push(...processInlineFormatting(child, equations));
     }
   }
 
@@ -157,6 +188,38 @@ function extractTextFromNode(node: ASTNode): string {
     return node.children.map(extractTextFromNode).join('');
   }
   return '';
+}
+
+// Pre-process markdown to handle math equations
+function preprocessMarkdown(markdown: string): { processed: string; equations: { [key: string]: string } } {
+  const equations: { [key: string]: string } = {};
+  let processed = markdown;
+  let equationCounter = 0;
+
+  console.log('Preprocessing markdown:', markdown.substring(0, 100));
+
+  // Handle block math equations ($$...$$)
+  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, equation) => {
+    const placeholder = `BLOCK_EQUATION_${equationCounter}_PLACEHOLDER`;
+    equations[placeholder] = equation.trim();
+    console.log(`Found block equation: ${equation.trim()} -> ${placeholder}`);
+    equationCounter++;
+    return `\n\n${placeholder}\n\n`;
+  });
+
+  // Handle inline math equations ($...$)
+  processed = processed.replace(/\$([^$\n]+?)\$/g, (match, equation) => {
+    const placeholder = `INLINE_EQUATION_${equationCounter}_PLACEHOLDER`;
+    equations[placeholder] = equation.trim();
+    console.log(`Found inline equation: ${equation.trim()} -> ${placeholder}`);
+    equationCounter++;
+    return placeholder;
+  });
+
+  console.log('Processed markdown:', processed.substring(0, 100));
+  console.log('Equations found:', Object.keys(equations).length);
+
+  return { processed, equations };
 }
 
 // Block creation functions
@@ -301,34 +364,76 @@ function createTableBlock(rows: NotionRichText[][][], hasColumnHeader: boolean =
   return blocks;
 }
 
-function createCalloutBlock(richText: NotionRichText[], emoji: string = '💡'): NotionBlock {
-  return {
-    type: 'callout',
-    callout: {
-      rich_text: richText,
-      icon: {
-        emoji: emoji
+function createImageBlock(url: string, caption?: string): NotionBlock {
+  const imageBlock: NotionBlock = {
+    type: 'image',
+    image: {
+      type: 'external',
+      external: {
+        url: url
       },
-      color: 'default'
+      caption: caption && caption.trim() ? [createRichText(caption)] : []
     }
   };
+
+  return imageBlock;
 }
 
 // Main conversion function for individual nodes
-function nodeToNotionBlocks(node: ASTNode): NotionBlock[] {
+function nodeToNotionBlocks(node: ASTNode, equations: { [key: string]: string } = {}): NotionBlock[] {
   const blocks: NotionBlock[] = [];
 
   switch (node.type) {
     case 'heading':
-      const headingRichText = paragraphToRichText(node);
+      const headingRichText = paragraphToRichText(node, equations);
       blocks.push(createHeadingBlock(node.depth || 1, headingRichText));
       break;
     
     case 'paragraph':
-      const paragraphRichText = paragraphToRichText(node);
-      // Only create paragraph if it has content
-      if (paragraphRichText.some(rt => rt.plain_text.trim())) {
-        blocks.push(createParagraphBlock(paragraphRichText));
+      const content = extractTextFromNode(node);
+      
+      // Check if this paragraph contains images
+      const hasImages = node.children?.some(child => child.type === 'image');
+      
+      if (hasImages && node.children) {
+        // Process each child separately
+        for (const child of node.children) {
+          if (child.type === 'image') {
+            console.log('Processing image in paragraph:', child.url, child.alt);
+            if (child.url) {
+              const alt = child.alt || '';
+              blocks.push(createImageBlock(child.url, alt));
+              console.log('Created image block with URL:', child.url);
+            }
+          } else {
+            // Process other content as normal paragraph
+            const childRichText = processInlineFormatting(child, equations);
+            if (childRichText.some(rt => rt.plain_text.trim())) {
+              blocks.push(createParagraphBlock(childRichText));
+            }
+          }
+        }
+      } else {
+        // Check if this paragraph is just a block equation placeholder
+        if (content.trim().match(/^BLOCK_EQUATION_\d+_PLACEHOLDER$/)) {
+          const equation = equations[content.trim()];
+          if (equation) {
+            console.log(`Converting block placeholder ${content.trim()} to equation: ${equation}`);
+            blocks.push(createEquationBlock(equation));
+          } else {
+            console.log(`No equation found for block placeholder: ${content.trim()}`);
+            const paragraphRichText = paragraphToRichText(node, equations);
+            if (paragraphRichText.some(rt => rt.plain_text.trim())) {
+              blocks.push(createParagraphBlock(paragraphRichText));
+            }
+          }
+        } else {
+          const paragraphRichText = paragraphToRichText(node, equations);
+          // Only create paragraph if it has content
+          if (paragraphRichText.some(rt => rt.plain_text.trim())) {
+            blocks.push(createParagraphBlock(paragraphRichText));
+          }
+        }
       }
       break;
     
@@ -342,14 +447,14 @@ function nodeToNotionBlocks(node: ASTNode): NotionBlock[] {
       break;
     
     case 'blockquote':
-      const quoteRichText = paragraphToRichText(node);
+      const quoteRichText = paragraphToRichText(node, equations);
       blocks.push(createQuoteBlock(quoteRichText));
       break;
     
     case 'list':
       if (node.children) {
         node.children.forEach((listItem: ASTNode) => {
-          const itemRichText = paragraphToRichText(listItem);
+          const itemRichText = paragraphToRichText(listItem, equations);
           
           // Check if it's a task list item
           // Task list items have checked property as true or false (not null)
@@ -377,7 +482,7 @@ function nodeToNotionBlocks(node: ASTNode): NotionBlock[] {
             if (row.children) {
               row.children.forEach((cell: ASTNode) => {
                 if (cell.type === 'tableCell') {
-                  cells.push(paragraphToRichText(cell));
+                  cells.push(paragraphToRichText(cell, equations));
                 }
               });
             }
@@ -399,6 +504,18 @@ function nodeToNotionBlocks(node: ASTNode): NotionBlock[] {
     
     case 'thematicBreak':
       blocks.push(createDividerBlock());
+      break;
+
+    case 'image':
+      // Handle images - check if URL is valid
+      console.log('Processing image node:', node.url, node.alt);
+      if (node.url) {
+        const alt = node.alt || '';
+        blocks.push(createImageBlock(node.url, alt));
+        console.log('Created image block with URL:', node.url);
+      } else {
+        console.log('Image node missing URL');
+      }
       break;
 
     // GitHub Flavored Markdown specific elements
@@ -428,6 +545,9 @@ export function markdownToBlocks(markdown: string): NotionBlock[] {
       return [createParagraphBlock([createRichText('')])];
     }
 
+    // Pre-process markdown to extract equations
+    const { processed: processedMarkdown, equations } = preprocessMarkdown(markdown);
+
     // Start with basic processor - add plugins gradually
     let processor = unified().use(remarkParse);
     
@@ -439,17 +559,9 @@ export function markdownToBlocks(markdown: string): NotionBlock[] {
       console.warn('GFM plugin failed to load:', gfmError);
     }
 
-    // Skip math plugin for now due to version conflicts
-    // TODO: Re-enable when unified ecosystem versions are compatible
-    // try {
-    //   processor = processor.use(remarkMath);
-    // } catch (mathError) {
-    //   console.warn('Math plugin failed to load:', mathError);
-    // }
-
     let tree: ASTNode;
     try {
-      const result = processor.parse(markdown);
+      const result = processor.parse(processedMarkdown);
       if (!result) {
         console.error('Parser returned undefined/null');
         return [createParagraphBlock([createRichText(markdown)])];
@@ -464,8 +576,18 @@ export function markdownToBlocks(markdown: string): NotionBlock[] {
     const blocks: NotionBlock[] = [];
 
     if (tree.children) {
-      tree.children.forEach((node: ASTNode) => {
-        blocks.push(...nodeToNotionBlocks(node));
+      console.log('Processing tree with', tree.children.length, 'children');
+      tree.children.forEach((node: ASTNode, index: number) => {
+        console.log(`Node ${index}:`, node.type, node.value ? node.value.substring(0, 50) : '');
+        if (node.type === 'paragraph') {
+          console.log('Paragraph children:', node.children?.map(child => ({ 
+            type: child.type, 
+            value: child.value?.substring(0, 30),
+            url: child.url,
+            alt: child.alt 
+          })));
+        }
+        blocks.push(...nodeToNotionBlocks(node, equations));
       });
     }
 
