@@ -14,7 +14,7 @@ export const NotionJsonDisplay: React.FC<NotionJsonDisplayProps> = ({
 }) => {
   return (
     <div>
-      <h2 className="text-lg font-semibold">Notion JSON</h2>
+      <h2 className="text-lg font-semibold mb-3 text-slate-600">Notion JSON</h2>
       <div className="relative p-4 bg-slate-50 border border-gray-200 rounded-xl shadow-sm h-64 overflow-y-auto">
         <div className="absolute top-3 right-3 z-20">
           <CopyButton

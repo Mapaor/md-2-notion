@@ -32,7 +32,7 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({
   } = useMarkdownInput({ initialValue, onMarkdownChange });
 
   return (
-    <div className="p-4 max-w-4xl mx-auto space-y-6">
+    <div className="mt-4 mx-auto space-y-6">
       <FileUpload 
         onFileChange={handleFileChange}
         error={error}

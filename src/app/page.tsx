@@ -39,48 +39,48 @@ export default function Home() {
     setVerificationResult(null);
   }, []);
 
-  const verificarMarkdownHandler = async () => {
-    if (!currentMarkdown.trim()) {
-      setError('No hi ha contingut Markdown per verificar');
-      return;
-    }
+  // const verificarMarkdownHandler = async () => {
+  //   if (!currentMarkdown.trim()) {
+  //     setError('No hi ha contingut Markdown per verificar');
+  //     return;
+  //   }
 
-    try {
-      setIsVerifying(true);
-      setError(null);
-      setVerificationResult(null);
+  //   try {
+  //     setIsVerifying(true);
+  //     setError(null);
+  //     setVerificationResult(null);
       
-      const result = markdownToAST(currentMarkdown);
+  //     const result = markdownToAST(currentMarkdown);
       
-      if (result.success) {
-        setVerificationResult({
-          success: true,
-          warnings: result.warnings,
-          statistics: result.statistics
-        });
-        setOutput('✅ Markdown verificat correctament!');
-      } else {
-        setVerificationResult({
-          success: false,
-          errors: result.errors,
-          warnings: result.warnings,
-          statistics: result.statistics
-        });
-        setError('❌ S\'han trobat errors en el Markdown');
-      }
-    } catch (err: unknown) {
-      let errorMsg = 'Error desconegut durant la verificació';
-      if (err instanceof Error) errorMsg = err.message;
-      console.error('Error inesperat:', errorMsg);
-      setError(errorMsg);
-      setVerificationResult({
-        success: false,
-        errors: [errorMsg]
-      });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
+  //     if (result.success) {
+  //       setVerificationResult({
+  //         success: true,
+  //         warnings: result.warnings,
+  //         statistics: result.statistics
+  //       });
+  //       setOutput('✅ Markdown verificat correctament!');
+  //     } else {
+  //       setVerificationResult({
+  //         success: false,
+  //         errors: result.errors,
+  //         warnings: result.warnings,
+  //         statistics: result.statistics
+  //       });
+  //       setError('❌ S\'han trobat errors en el Markdown');
+  //     }
+  //   } catch (err: unknown) {
+  //     let errorMsg = 'Error desconegut durant la verificació';
+  //     if (err instanceof Error) errorMsg = err.message;
+  //     console.error('Error inesperat:', errorMsg);
+  //     setError(errorMsg);
+  //     setVerificationResult({
+  //       success: false,
+  //       errors: [errorMsg]
+  //     });
+  //   } finally {
+  //     setIsVerifying(false);
+  //   }
+  // };
 
   const importarMarkdownHandler = async () => {
     if (!currentNotionJson.trim()) {
