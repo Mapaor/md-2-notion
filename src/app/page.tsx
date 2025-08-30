@@ -95,7 +95,7 @@ Aquest és un **text en negreta** i aquest és *text en cursiva*.
 
 ### Codi
 
-Podem tenir blocs de codi en \`javascript\`, \`python\` i molts més llenguatges.
+Podem tenir blocs de codi en javascript, python i molts més llenguatges.
 
 \`\`\`javascript
 console.log('Hola, món!');
@@ -117,15 +117,11 @@ $$
 
 ![](https://cdn.mathpix.com/cropped/2025_08_29_1fa009b3b17812752d01g-01.jpg?height=238&width=423&top_left_y=1695&top_left_x=1304)
 
-
-
 ### Enllaç
 
 [Enllaç a GitHub](https://github.com)
-[Enllaç relatiu](../../blob/master/resum-teoria-Compu)
-`}
 
-      ></MarkdownInput>
+[Enllaç relatiu](../../Resum-teoria-Compu.md)`}></MarkdownInput>
       <h3 className="mt-6 text-lg text-gray-600 font-semibold">Executa l&apos;acció</h3>
       {/* {currentMarkdown && (
         <div className="mt-2 p-2 bg-gray-50 border rounded text-sm">

@@ -143,8 +143,40 @@ body {
   font-style: italic;
 }
 
-/* Task list styling */
+/* Task list styling - Enhanced GitHub-like approach */
 .markdown-preview input[type="checkbox"] {
-  margin: 0 0.2em 0.25em -1.6em;
-  vertical-align: middle;
+  margin-right: 0.5rem;
+  accent-color: #0969da;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+/* Target task list items specifically - hide all list styling */
+.markdown-preview li:has(input[type="checkbox"]) {
+  list-style: none !important;
+  list-style-type: none !important;
+  margin-left: -1.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+/* Additional specificity to override all list styling on task items */
+.markdown-preview ul li:has(input[type="checkbox"]),
+.markdown-preview ol li:has(input[type="checkbox"]) {
+  list-style: none !important;
+  list-style-type: none !important;
+}
+
+/* Remove any potential bullet pseudo-elements */
+.markdown-preview li:has(input[type="checkbox"])::before,
+.markdown-preview li:has(input[type="checkbox"])::marker {
+  display: none !important;
+  content: none !important;
+}
+
+/* Ensure task list containers don't add extra spacing */
+.markdown-preview ul:has(li input[type="checkbox"]),
+.markdown-preview ol:has(li input[type="checkbox"]) {
+  padding-left: 0;
+  margin-left: 0;
 }

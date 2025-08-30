@@ -32,51 +32,27 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
       );
     }
 
-    // First try with all plugins - now with compatible versions
+    // Try with all plugins using type workarounds for compatibility
     try {
       return (
         <ReactMarkdown 
           remarkPlugins={[remarkGfm, remarkMath]}
-          // @ts-expect-error - Known type issue with plugin compatibility
+          // @ts-expect-error - Version compatibility issues with unified ecosystem
           rehypePlugins={[rehypeKatex, rehypeHighlight]}
         >
           {content}
         </ReactMarkdown>
       );
     } catch (error) {
-      console.warn('Full plugin rendering failed, trying without math:', error);
+      console.warn('Plugin rendering failed:', error);
       
-      // Fallback: try without math plugins (common source of errors)
-      try {
-        return (
-          <div>
-            <ReactMarkdown 
-              remarkPlugins={[remarkGfm]}
-              // @ts-expect-error - Known type issue with plugin compatibility
-              rehypePlugins={[rehypeHighlight]}
-            >
-              {content}
-            </ReactMarkdown>
-            <p className="text-xs text-amber-600 mt-2 p-2 bg-amber-50 rounded">
-              <em>⚠️ Equations unavailable due to plugin compatibility - syntax highlighting enabled</em>
-            </p>
-          </div>
-        );
-      } catch (error2) {
-        console.warn('Highlight plugin failed, using basic rendering:', error2);
-        
-        // Final fallback: basic rendering only
-        return (
-          <div>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {content}
-            </ReactMarkdown>
-            <p className="text-xs text-amber-600 mt-2 p-2 bg-amber-50 rounded">
-              <em>⚠️ Advanced features unavailable - basic markdown rendering only</em>
-            </p>
-          </div>
-        );
-      }
+      // Simple fallback without math
+      return (
+        // @ts-expect-error - Version compatibility issues
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+          {content}
+        </ReactMarkdown>
+      );
     }
   };
 

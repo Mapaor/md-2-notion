@@ -1,7 +1,6 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
 
 // AST Node types
 interface ASTNode {
@@ -424,12 +423,44 @@ function nodeToNotionBlocks(node: ASTNode): NotionBlock[] {
 
 export function markdownToBlocks(markdown: string): NotionBlock[] {
   try {
-    const processor = unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      .use(remarkMath);
+    // Return empty paragraph for empty input
+    if (!markdown || !markdown.trim()) {
+      return [createParagraphBlock([createRichText('')])];
+    }
 
-    const tree = processor.parse(markdown) as ASTNode;
+    // Start with basic processor - add plugins gradually
+    let processor = unified().use(remarkParse);
+    
+    // Add GFM support with error handling
+    try {
+      // @ts-expect-error - Version compatibility issues between unified packages
+      processor = processor.use(remarkGfm);
+    } catch (gfmError) {
+      console.warn('GFM plugin failed to load:', gfmError);
+    }
+
+    // Skip math plugin for now due to version conflicts
+    // TODO: Re-enable when unified ecosystem versions are compatible
+    // try {
+    //   processor = processor.use(remarkMath);
+    // } catch (mathError) {
+    //   console.warn('Math plugin failed to load:', mathError);
+    // }
+
+    let tree: ASTNode;
+    try {
+      const result = processor.parse(markdown);
+      if (!result) {
+        console.error('Parser returned undefined/null');
+        return [createParagraphBlock([createRichText(markdown)])];
+      }
+      tree = result as ASTNode;
+    } catch (parseError) {
+      console.error('Error parsing markdown:', parseError);
+      // Final fallback: treat as plain text
+      return [createParagraphBlock([createRichText(markdown)])];
+    }
+
     const blocks: NotionBlock[] = [];
 
     if (tree.children) {
