@@ -15,11 +15,80 @@ interface MarkdownInputProps {
   onMarkdownChange?: (markdown: string, notionJson: string) => void;
 }
 
+// Simple Error Boundary for markdown preview
+class MarkdownErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode; content?: string },
+  { hasError: boolean; lastContent: string; errorCount: number }
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ReactNode; content?: string }) {
+    super(props);
+    this.state = { hasError: false, lastContent: '', errorCount: 0 };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error): void {
+    console.warn('Markdown preview error caught by boundary:', error.message);
+    // If it's the known remarkGfm error, we know the fallback will work
+    if (error.message.includes('inTable') || error.message.includes('this.data is undefined')) {
+      console.info('Known remarkGfm error detected, falling back to basic markdown');
+    }
+  }
+
+  componentDidUpdate(prevProps: { content?: string }): void {
+    // Reset error state when content actually changes
+    if (this.props.content !== prevProps.content && this.props.content !== this.state.lastContent) {
+      if (this.state.hasError) {
+        // Reset immediately when content changes for remarkGfm errors
+        setTimeout(() => {
+          this.setState({ 
+            hasError: false, 
+            lastContent: this.props.content || '',
+            errorCount: this.state.errorCount + 1
+          });
+        }, 100); // Very fast reset for better UX
+      } else {
+        this.setState({ lastContent: this.props.content || '' });
+      }
+    }
+  }
+
+  render(): React.ReactNode {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+
+    return this.props.children;
+  }
+}
+
 const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMarkdownChange }) => {
   const [text, setText] = useState<string>(initialValue);
   const [error, setError] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const [copyJsonSuccess, setCopyJsonSuccess] = useState<boolean>(false);
+  const [debouncedText, setDebouncedText] = useState<string>(initialValue);
+  const [previewText, setPreviewText] = useState<string>(initialValue);
+
+  // Debounce text changes to avoid excessive processing while typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedText(text);
+    }, 300); // 300ms delay for JSON
+
+    return () => clearTimeout(timer);
+  }, [text]);
+
+  // Longer debounce for preview to avoid parsing errors while typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPreviewText(text);
+    }, 1200); // 1200ms delay for preview to allow complete typing
+
+    return () => clearTimeout(timer);
+  }, [text]);
 
   // Create a safe ReactMarkdown component that handles plugin errors
   const SafeMarkdownPreview = ({ content }: { content: string }) => {
@@ -32,9 +101,47 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
       );
     }
 
-    // Try with all plugins using type workarounds for compatibility
-    try {
+    const fallbackPreview = (
+      <div className="text-gray-600 text-sm">
+        <p>⚠️ Previsualització temporalment no disponible</p>
+        <pre className="text-xs mt-2 bg-gray-50 p-2 rounded max-h-32 overflow-y-auto font-mono">
+          {content.length > 300 ? content.substring(0, 300) + '...' : content}
+        </pre>
+      </div>
+    );
+
+    // Check for patterns that cause remarkGfm to fail
+    const hasInlineCode = content.includes('`');
+
+    // If there's any inline code, skip remarkGfm to avoid errors
+    if (hasInlineCode) {
       return (
+        <MarkdownErrorBoundary content={content} fallback={fallbackPreview}>
+          <ReactMarkdown 
+            remarkPlugins={[remarkMath]}
+            // @ts-expect-error - Version compatibility issues
+            rehypePlugins={[rehypeKatex, rehypeHighlight]}
+          >
+            {content}
+          </ReactMarkdown>
+        </MarkdownErrorBoundary>
+      );
+    }
+
+    // First try: with all plugins including GFM
+    return (
+      <MarkdownErrorBoundary content={content} fallback={
+        // Second try: without GFM if the first fails
+        <MarkdownErrorBoundary content={content} fallback={fallbackPreview}>
+          <ReactMarkdown 
+            remarkPlugins={[remarkMath]}
+            // @ts-expect-error - Version compatibility issues
+            rehypePlugins={[rehypeKatex, rehypeHighlight]}
+          >
+            {content}
+          </ReactMarkdown>
+        </MarkdownErrorBoundary>
+      }>
         <ReactMarkdown 
           remarkPlugins={[remarkGfm, remarkMath]}
           // @ts-expect-error - Version compatibility issues with unified ecosystem
@@ -42,27 +149,37 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
         >
           {content}
         </ReactMarkdown>
-      );
-    } catch (error) {
-      console.warn('Plugin rendering failed:', error);
-      
-      // Simple fallback without math and highlighting
-      return (
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {content}
-        </ReactMarkdown>
-      );
-    }
+      </MarkdownErrorBoundary>
+    );
   };
 
   const notionJson = useMemo(() => {
-    try {
-      const blocks = markdownToBlocks(text);
-      return JSON.stringify(blocks, null, 2);
-    } catch {
-      return 'Error generant JSON de Notion';
+    // Don't process if text is empty
+    if (!debouncedText.trim()) {
+      return JSON.stringify([], null, 2);
     }
-  }, [text]);
+
+    try {
+      const blocks = markdownToBlocks(debouncedText);
+      return JSON.stringify(blocks, null, 2);
+    } catch (error) {
+      console.warn('Error generant JSON de Notion en temps real:', error);
+      // Return a safe fallback instead of throwing
+      return JSON.stringify([{
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [{
+            type: 'text',
+            text: { content: 'Error en la conversió en temps real', link: null },
+            annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'red' },
+            plain_text: 'Error en la conversió en temps real',
+            href: null
+          }],
+          color: 'default'
+        }
+      }], null, 2);
+    }
+  }, [debouncedText]);
 
   // Use useEffect to call the callback when markdown or JSON changes
   useEffect(() => {
@@ -170,7 +287,7 @@ const MarkdownInput: React.FC<MarkdownInputProps> = ({ initialValue = '', onMark
       <h2 className="text-lg font-semibold">Previsualització</h2>
       <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm h-64 overflow-y-auto">
         <div className="markdown-preview">
-          <SafeMarkdownPreview content={text} />
+          <SafeMarkdownPreview content={previewText} />
         </div>
       </div>
 

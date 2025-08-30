@@ -1,6 +1,7 @@
 'use client';
 import { useState, useCallback } from 'react';
 import importarMarkdown from './lib/utils/importarMarkdown';
+import { markdownToAST } from './lib/utils/Markdown2AST';
 import Head from 'next/head';
 import MarkdownInput from './components/MarkdownInput';
 import type { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
@@ -16,11 +17,70 @@ export default function Home() {
   const [currentMarkdown, setCurrentMarkdown] = useState('');
   const [currentNotionJson, setCurrentNotionJson] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<{
+    success: boolean;
+    errors?: string[];
+    warnings?: string[];
+    statistics?: {
+      totalNodes: number;
+      nodeTypes: Record<string, number>;
+      hasEquations: boolean;
+      hasImages: boolean;
+      hasTables: boolean;
+      hasCodeBlocks: boolean;
+    };
+  } | null>(null);
 
   const handleMarkdownChange = useCallback((markdown: string, notionJson: string) => {
     setCurrentMarkdown(markdown);
     setCurrentNotionJson(notionJson);
+    // Clear verification result when markdown changes
+    setVerificationResult(null);
   }, []);
+
+  const verificarMarkdownHandler = async () => {
+    if (!currentMarkdown.trim()) {
+      setError('No hi ha contingut Markdown per verificar');
+      return;
+    }
+
+    try {
+      setIsVerifying(true);
+      setError(null);
+      setVerificationResult(null);
+      
+      const result = markdownToAST(currentMarkdown);
+      
+      if (result.success) {
+        setVerificationResult({
+          success: true,
+          warnings: result.warnings,
+          statistics: result.statistics
+        });
+        setOutput('✅ Markdown verificat correctament!');
+      } else {
+        setVerificationResult({
+          success: false,
+          errors: result.errors,
+          warnings: result.warnings,
+          statistics: result.statistics
+        });
+        setError('❌ S\'han trobat errors en el Markdown');
+      }
+    } catch (err: unknown) {
+      let errorMsg = 'Error desconegut durant la verificació';
+      if (err instanceof Error) errorMsg = err.message;
+      console.error('Error inesperat:', errorMsg);
+      setError(errorMsg);
+      setVerificationResult({
+        success: false,
+        errors: [errorMsg]
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const importarMarkdownHandler = async () => {
     if (!currentNotionJson.trim()) {
@@ -128,8 +188,93 @@ $$
           <strong>Markdown detectat:</strong> {currentMarkdown.length} caràcters
         </div>
       )} */}
+      
+      {/* Botó de Verificar Markdown */}
       <button 
         className={`mt-6 text-white py-3 px-5 rounded-lg font-medium shadow w-full transition flex items-center justify-center ${
+          !currentMarkdown.trim() || isVerifying
+            ? 'bg-gray-400 cursor-not-allowed' 
+            : 'bg-blue-600 hover:bg-blue-500'
+        }`}
+        onClick={verificarMarkdownHandler}
+        disabled={!currentMarkdown.trim() || isVerifying}
+      >
+        {isVerifying ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Verificant...
+          </>
+        ) : (
+          '🔍 Verificar Markdown'
+        )}
+      </button>
+
+      {/* Resultats de la verificació */}
+      {verificationResult && (
+        <div className={`mt-4 p-4 rounded-lg border ${
+          verificationResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+        }`}>
+          <h4 className={`font-semibold ${
+            verificationResult.success ? 'text-green-800' : 'text-red-800'
+          }`}>
+            {verificationResult.success ? '✅ Verificació correcta' : '❌ Errors trobats'}
+          </h4>
+          
+          {verificationResult.errors && verificationResult.errors.length > 0 && (
+            <div className="mt-2">
+              <p className="text-red-700 font-medium">Errors:</p>
+              <ul className="text-red-600 text-sm mt-1">
+                {verificationResult.errors.map((error, index) => (
+                  <li key={index}>• {error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {verificationResult.warnings && verificationResult.warnings.length > 0 && (
+            <div className="mt-2">
+              <p className="text-orange-700 font-medium">Avisos:</p>
+              <ul className="text-orange-600 text-sm mt-1">
+                {verificationResult.warnings.map((warning, index) => (
+                  <li key={index}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {verificationResult.statistics && (
+            <div className="mt-3">
+              <p className="text-gray-700 font-medium">Estadístiques:</p>
+              <div className="text-sm text-gray-600 mt-1 grid grid-cols-2 gap-2">
+                <div>📊 Total nodes: {verificationResult.statistics.totalNodes}</div>
+                <div>🧮 Equacions: {verificationResult.statistics.hasEquations ? '✅' : '❌'}</div>
+                <div>🖼️ Imatges: {verificationResult.statistics.hasImages ? '✅' : '❌'}</div>
+                <div>📋 Taules: {verificationResult.statistics.hasTables ? '✅' : '❌'}</div>
+                <div>💻 Codi: {verificationResult.statistics.hasCodeBlocks ? '✅' : '❌'}</div>
+              </div>
+              {Object.keys(verificationResult.statistics.nodeTypes).length > 0 && (
+                <div className="mt-2">
+                  <p className="text-gray-600 text-xs">Tipus de nodes:</p>
+                  <div className="text-xs text-gray-500 flex flex-wrap gap-1 mt-1">
+                    {Object.entries(verificationResult.statistics.nodeTypes).map(([type, count]) => (
+                      <span key={type} className="bg-gray-100 px-2 py-1 rounded">
+                        {type}: {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Botó d'Importar Markdown */}
+      <button 
+        className={`mt-4 text-white py-3 px-5 rounded-lg font-medium shadow w-full transition flex items-center justify-center ${
           !currentNotionJson.trim() || !pageId || !notionToken || isLoading
             ? 'bg-gray-400 cursor-not-allowed' 
             : 'bg-green-600 hover:bg-green-500'
@@ -146,7 +291,7 @@ $$
             Important...
           </>
         ) : (
-          'Importar Markdown'
+          '📤 Importar Markdown'
         )}
       </button>
       <h3 className="mt-6 text-lg text-gray-600 font-semibold">Output</h3>
