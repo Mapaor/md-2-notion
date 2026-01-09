@@ -1,3 +1,4 @@
+# md-2-notion
 Simple website to import markdown content or files to your Notion pages.
 
 You can find the webiste at: [md-2-notion.vercel.app](https://md-2-notion.vercel.app). The website does not store any data, your API key is completely safe (check de source code). However if safety is a big concern it is as simple as forking this repo and publishing your cloned repo to Vercel.
